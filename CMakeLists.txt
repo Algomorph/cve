@@ -74,7 +74,7 @@ set_property(CACHE PYTHON_DESIRED_VERSION PROPERTY STRINGS ${PYTHON_OPTIONS})
 
 
 #--------------------------FIND PACKAGES----------------------------------------#
-find_package(DSSDK REQUIRED)
+
 find_package(OpenCV COMPONENTS core imgproc highgui REQUIRED)
 include("DetectPython")
 if (${PYTHON_DESIRED_VERSION} STREQUAL "2.X")
