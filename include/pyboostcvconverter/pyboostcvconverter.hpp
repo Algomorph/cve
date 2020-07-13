@@ -1,5 +1,5 @@
 /*
- * CVBoostConverter.hpp
+ * pyboost_cv_converter.hpp
  *
  *  Created on: Mar 20, 2014
  *      Author: Gregory Kramida
@@ -16,17 +16,13 @@
 #include <opencv2/core/core.hpp>
 #include <boost/python.hpp>
 #include <cstdio>
-#ifdef __GNUC__
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wunused-function"
-#endif
 
-namespace cve {
+namespace pbcvt{
 
-    using namespace cv;
+using namespace cv;
 
 
-    static PyObject *opencv_error = 0;
+static PyObject* opencv_error = 0;
 
 
 //===================    MACROS    =================================================================
@@ -42,55 +38,49 @@ catch (const cv::Exception &e) \
     return 0; \
 }
 
-//===================   ERROR HANDLING     =========================================================
-
-//    static int failmsg(const char *fmt, ...);
-//
-//    static PyObject *failmsgp(const char *fmt, ...);
-
 //===================   THREADING     ==============================================================
-    class PyAllowThreads;
+class PyAllowThreads;
+class PyEnsureGIL;
 
-    class PyEnsureGIL;
+static size_t REFCOUNT_OFFSET = (size_t)&(((PyObject*)0)->ob_refcnt) +
+                                (0x12345678 != *(const size_t*)"\x78\x56\x34\x12\0\0\0\0\0")*sizeof(int);
 
-    static size_t REFCOUNT_OFFSET = (size_t) &(((PyObject *) 0)->ob_refcnt) +
-                                    (0x12345678 != *(const size_t *) "\x78\x56\x34\x12\0\0\0\0\0") * sizeof(int);
+static inline PyObject* pyObjectFromRefcount(const int* refcount)
+{
+	return (PyObject*)((size_t)refcount - REFCOUNT_OFFSET);
+}
 
-    static inline PyObject *pyObjectFromRefcount(const int *refcount) {
-        return (PyObject *) ((size_t) refcount - REFCOUNT_OFFSET);
-    }
-
-    static inline int *refcountFromPyObject(const PyObject *obj) {
-        return (int *) ((size_t) obj + REFCOUNT_OFFSET);
-    }
+static inline int* refcountFromPyObject(const PyObject* obj)
+{
+	return (int*)((size_t)obj + REFCOUNT_OFFSET);
+}
 
 //===================   NUMPY ALLOCATOR FOR OPENCV     =============================================
 
-    class NumpyAllocator;
+class NumpyAllocator;
 
 //===================   STANDALONE CONVERTER FUNCTIONS     =========================================
 
-    PyObject *fromMatToNDArray(const Mat &m);
-
-    Mat fromNDArrayToMat(PyObject *o);
+PyObject* fromMatToNDArray(const Mat& m);
+Mat fromNDArrayToMat(PyObject* o);
 
 //===================   BOOST CONVERTERS     =======================================================
 
-    struct matToNDArrayBoostConverter {
-        static PyObject *convert(Mat const &m);
-    };
+struct matToNDArrayBoostConverter {
+	static PyObject* convert(Mat const& m);
+};
 
 
-    struct matFromNDArrayBoostConverter {
+struct matFromNDArrayBoostConverter {
 
-        matFromNDArrayBoostConverter();
+	matFromNDArrayBoostConverter();
 
-        /// @brief Check if PyObject is an array and can be converted to OpenCV matrix.
-        static void *convertible(PyObject *object);
+	/// @brief Check if PyObject is an array and can be converted to OpenCV matrix.
+	static void* convertible(PyObject* object);
 
-        /// @brief Construct a Mat from an NDArray object.
-        static void construct(PyObject *object,
-                              boost::python::converter::rvalue_from_python_stage1_data *data);
-    };
-} // end namespace cve
+	/// @brief Construct a Mat from an NDArray object.
+	static void construct(PyObject* object,
+	                      boost::python::converter::rvalue_from_python_stage1_data* data);
+};
+} // end namespace pbcvt
 #endif /* CVBOOSTCONVERTER_HPP_ */

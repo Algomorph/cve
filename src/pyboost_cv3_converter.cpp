@@ -1,5 +1,5 @@
 /*
- * CV3BoostConverter.cpp
+ * pyboost_cv3_converter.cpp
  *
  *  Created on: May 21, 2015
  *      Author: Gregory Kramida
@@ -8,25 +8,12 @@
 #define NO_IMPORT_ARRAY
 #define PY_ARRAY_UNIQUE_SYMBOL cve_ARRAY_API
 #include <pyboostcvconverter/pyboostcvconverter.hpp>
-#if CV_VERSION_MAJOR == 3
-namespace cve {
+#if !defined CV_VERSION_EPOCH && CV_VERSION_MAJOR == 3
+namespace pbcvt {
 using namespace cv;
 //===================   ERROR HANDLING     =========================================================
 
 static int failmsg(const char *fmt, ...) {
-	char str[1000];
-
-	va_list ap;
-	va_start(ap, fmt);
-	vsnprintf(str, sizeof(str), fmt, ap);
-	va_end(ap);
-
-	PyErr_SetString(PyExc_TypeError, str);
-	return 0;
-}
-
-static PyObject* failmsgp(const char *fmt, ...)
-		{
 	char str[1000];
 
 	va_list ap;
@@ -77,7 +64,7 @@ public:
 	}
 
 	UMatData* allocate(PyObject* o, int dims, const int* sizes, int type,
-			size_t* step) const {
+	                   size_t* step) const {
 		UMatData* u = new UMatData(this);
 		u->data = u->origdata = (uchar*) PyArray_DATA((PyArrayObject*) o);
 		npy_intp* _strides = PyArray_STRIDES((PyArrayObject*) o);
@@ -90,12 +77,12 @@ public:
 	}
 
 	UMatData* allocate(int dims0, const int* sizes, int type, void* data,
-			size_t* step, int flags, UMatUsageFlags usageFlags) const {
+	                   size_t* step, int flags, UMatUsageFlags usageFlags) const {
 		if (data != 0) {
 			CV_Error(Error::StsAssert, "The data should normally be NULL!");
 			// probably this is safe to do in such extreme case
 			return stdAllocator->allocate(dims0, sizes, type, data, step, flags,
-					usageFlags);
+			                              usageFlags);
 		}
 		PyEnsureGIL gil;
 
@@ -110,8 +97,8 @@ public:
 				depth == CV_32S ? NPY_INT :
 				depth == CV_32F ? NPY_FLOAT :
 				depth == CV_64F ?
-									NPY_DOUBLE :
-									f * NPY_ULONGLONG + (f ^ 1) * NPY_UINT;
+				NPY_DOUBLE :
+				f * NPY_ULONGLONG + (f ^ 1) * NPY_UINT;
 		int i, dims = dims0;
 		cv::AutoBuffer<npy_intp> _sizes(dims + 1);
 		for (i = 0; i < dims; i++)
@@ -121,12 +108,12 @@ public:
 		PyObject* o = PyArray_SimpleNew(dims, _sizes, typenum);
 		if (!o)
 			CV_Error_(Error::StsError,
-					("The numpy array of typenum=%d, ndims=%d can not be created", typenum, dims));
+			          ("The numpy array of typenum=%d, ndims=%d can not be created", typenum, dims));
 		return allocate(o, dims0, sizes, type, step);
 	}
 
 	bool allocate(UMatData* u, int accessFlags,
-			UMatUsageFlags usageFlags) const {
+	              UMatUsageFlags usageFlags) const {
 		return stdAllocator->allocate(u, accessFlags, usageFlags);
 	}
 
@@ -150,8 +137,8 @@ NumpyAllocator g_numpyAllocator;
 PyObject* fromMatToNDArray(const Mat& m) {
 	if (!m.data)
 		Py_RETURN_NONE;
-		Mat temp,
-	*p = (Mat*) &m;
+	Mat temp,
+			*p = (Mat*) &m;
 	if (!p->u || p->allocator != &g_numpyAllocator) {
 		temp.allocator = &g_numpyAllocator;
 		ERRWRAP2(m.copyTo(temp));
@@ -175,16 +162,16 @@ Mat fromNDArrayToMat(PyObject* o) {
 		bool needcopy = false, needcast = false;
 		int typenum = PyArray_TYPE(oarr), new_typenum = typenum;
 		int type = typenum == NPY_UBYTE ? CV_8U : typenum == NPY_BYTE ? CV_8S :
-					typenum == NPY_USHORT ? CV_16U :
-					typenum == NPY_SHORT ? CV_16S :
-					typenum == NPY_INT ? CV_32S :
-					typenum == NPY_INT32 ? CV_32S :
-					typenum == NPY_FLOAT ? CV_32F :
-					typenum == NPY_DOUBLE ? CV_64F : -1;
+		                                          typenum == NPY_USHORT ? CV_16U :
+		                                          typenum == NPY_SHORT ? CV_16S :
+		                                          typenum == NPY_INT ? CV_32S :
+		                                          typenum == NPY_INT32 ? CV_32S :
+		                                          typenum == NPY_FLOAT ? CV_32F :
+		                                          typenum == NPY_DOUBLE ? CV_64F : -1;
 
 		if (type < 0) {
 			if (typenum == NPY_INT64 || typenum == NPY_UINT64
-					|| type == NPY_LONG) {
+			    || type == NPY_LONG) {
 				needcopy = needcast = true;
 				new_typenum = NPY_INT;
 				type = CV_32S;
@@ -220,7 +207,7 @@ Mat fromNDArrayToMat(PyObject* o) {
 			//  b) transposed arrays, where _strides[] elements go in non-descending order
 			//  c) flipped arrays, where some of _strides[] elements are negative
 			if ((i == ndims - 1 && (size_t) _strides[i] != elemsize)
-					|| (i < ndims - 1 && _strides[i] < _strides[i + 1]))
+			    || (i < ndims - 1 && _strides[i] < _strides[i + 1]))
 				needcopy = true;
 		}
 
@@ -279,10 +266,10 @@ Mat fromNDArrayToMat(PyObject* o) {
 PyObject* matToNDArrayBoostConverter::convert(Mat const& m) {
 	if (!m.data)
 		Py_RETURN_NONE;
-		Mat temp,
-	*p = (Mat*) &m;
+	Mat temp,
+			*p = (Mat*) &m;
 	if (!p->u || p->allocator != &g_numpyAllocator)
-			{
+	{
 		temp.allocator = &g_numpyAllocator;
 		ERRWRAP2(m.copyTo(temp));
 		p = &temp;
@@ -294,7 +281,7 @@ PyObject* matToNDArrayBoostConverter::convert(Mat const& m) {
 
 matFromNDArrayBoostConverter::matFromNDArrayBoostConverter() {
 	boost::python::converter::registry::push_back(convertible, construct,
-			boost::python::type_id<Mat>());
+	                                              boost::python::type_id<Mat>());
 }
 
 /// @brief Check if PyObject is an array and can be converted to OpenCV matrix.
@@ -309,10 +296,10 @@ void* matFromNDArrayBoostConverter::convertible(PyObject* object) {
 
 	int typenum = PyArray_TYPE(oarr);
 	if (typenum != NPY_INT64 && typenum != NPY_UINT64 && typenum != NPY_LONG
-			&& typenum != NPY_UBYTE && typenum != NPY_BYTE
-			&& typenum != NPY_USHORT && typenum != NPY_SHORT
-			&& typenum != NPY_INT && typenum != NPY_INT32
-			&& typenum != NPY_FLOAT && typenum != NPY_DOUBLE) {
+	    && typenum != NPY_UBYTE && typenum != NPY_BYTE
+	    && typenum != NPY_USHORT && typenum != NPY_SHORT
+	    && typenum != NPY_INT && typenum != NPY_INT32
+	    && typenum != NPY_FLOAT && typenum != NPY_DOUBLE) {
 		return NULL;
 	}
 	int ndims = PyArray_NDIM(oarr); //data type not supported
@@ -325,7 +312,7 @@ void* matFromNDArrayBoostConverter::convertible(PyObject* object) {
 
 /// @brief Construct a Mat from an NDArray object.
 void matFromNDArrayBoostConverter::construct(PyObject* object,
-		boost::python::converter::rvalue_from_python_stage1_data* data) {
+                                             boost::python::converter::rvalue_from_python_stage1_data* data) {
 	namespace python = boost::python;
 	// Object is a borrowed reference, so create a handle indicting it is
 	// borrowed for proper reference counting.
@@ -345,12 +332,12 @@ void matFromNDArrayBoostConverter::construct(PyObject* object,
 	bool needcopy = false, needcast = false;
 	int typenum = PyArray_TYPE(oarr), new_typenum = typenum;
 	int type = typenum == NPY_UBYTE ? CV_8U : typenum == NPY_BYTE ? CV_8S :
-				typenum == NPY_USHORT ? CV_16U :
-				typenum == NPY_SHORT ? CV_16S :
-				typenum == NPY_INT ? CV_32S :
-				typenum == NPY_INT32 ? CV_32S :
-				typenum == NPY_FLOAT ? CV_32F :
-				typenum == NPY_DOUBLE ? CV_64F : -1;
+	                                          typenum == NPY_USHORT ? CV_16U :
+	                                          typenum == NPY_SHORT ? CV_16S :
+	                                          typenum == NPY_INT ? CV_32S :
+	                                          typenum == NPY_INT32 ? CV_32S :
+	                                          typenum == NPY_FLOAT ? CV_32F :
+	                                          typenum == NPY_DOUBLE ? CV_64F : -1;
 
 	if (type < 0) {
 		needcopy = needcast = true;
@@ -376,7 +363,7 @@ void matFromNDArrayBoostConverter::construct(PyObject* object,
 		//  b) transposed arrays, where _strides[] elements go in non-descending order
 		//  c) flipped arrays, where some of _strides[] elements are negative
 		if ((i == ndims - 1 && (size_t) _strides[i] != elemsize)
-				|| (i < ndims - 1 && _strides[i] < _strides[i + 1]))
+		    || (i < ndims - 1 && _strides[i] < _strides[i + 1]))
 			needcopy = true;
 	}
 
@@ -423,5 +410,5 @@ void matFromNDArrayBoostConverter::construct(PyObject* object,
 	data->convertible = storage;
 }
 
-}			//end namespace cve
+}			//end namespace pbcvt
 #endif

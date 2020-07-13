@@ -18,8 +18,8 @@ namespace cve {
     PyObject *dot(PyObject *left, PyObject *right) {
 
         cv::Mat leftMat, rightMat;
-        leftMat = cve::fromNDArrayToMat(left);
-        rightMat = cve::fromNDArrayToMat(right);
+        leftMat = pbcvt::fromNDArrayToMat(left);
+        rightMat = pbcvt::fromNDArrayToMat(right);
         auto c1 = leftMat.cols, r2 = rightMat.rows;
         // Check that the 2-D matrices can be legally multiplied.
         if (c1 != r2) {
@@ -28,7 +28,7 @@ namespace cve {
             throw_error_already_set();
         }
         cv::Mat result = leftMat * rightMat;
-        PyObject * ret = cve::fromMatToNDArray(result);
+        PyObject * ret = pbcvt::fromMatToNDArray(result);
         return ret;
     }
 
@@ -71,8 +71,8 @@ namespace cve {
 
         //initialize converters
         to_python_converter<cv::Mat,
-                cve::matToNDArrayBoostConverter>();
-        cve::matFromNDArrayBoostConverter();
+		        pbcvt::matToNDArrayBoostConverter>();
+        pbcvt::matFromNDArrayBoostConverter();
 
         //expose module-level functions
         def("dot", dot);
